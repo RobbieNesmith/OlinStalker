@@ -10,12 +10,31 @@ import dht11
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(23, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-
+GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 app = Flask(__name__)
 app.debug = True
 
 temp = 0
 humidity = 0
+moveFile = ""
+timeVal = 0
+
+def movementCamera(channel):
+  global timeVal
+  global moveFile
+  newTime = time.time()
+  if newTime - timeVal > 5:
+    mf = str(int(time.time()))
+    pygame.camera.init()
+    cam = pygame.camera.Camera("/dev/video0",(1280,720))
+    cam.start()
+    img = cam.get_image()
+    pygame.image.save(img,"static/{}move.jpg".format(mf))
+    cam.stop()
+    moveFile = "{}move.jpg".format(mf)
+    timeVal = newTime
+
+GPIO.add_event_detect(17,GPIO.RISING, callback=movementCamera,bouncetime=300)
 
 @app.route("/")
 def index():
@@ -25,7 +44,7 @@ def index():
   lstr = "off"
   if lights:
     lstr = "on"
-  return render_template("index.html",lights=lstr,fname=fname,temp=th[0],humidity=th[1])
+  return render_template("index.html",lights=lstr,fname=fname,move=moveFile,temp=th[0],humidity=th[1])
 
 def get_temp():
   global temp
@@ -43,8 +62,8 @@ def take_picture():
   cam = pygame.camera.Camera("/dev/video0",(1280,720))
   cam.start()
   img = cam.get_image()
-  pygame.image.save(img,"static/{}.jpg".format(fname))
   cam.stop()
+  pygame.image.save(img,"static/{}.jpg".format(fname))
   return "{}.jpg".format(fname)
 
 def get_lights_on():
@@ -54,3 +73,4 @@ if __name__ == "__main__":
   app.run(host="0.0.0.0")
 
 GPIO.cleanup()
+cam.stop()
